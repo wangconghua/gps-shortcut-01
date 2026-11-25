@@ -18,6 +18,60 @@ ENTRY_TEXT = (
 OUTPUT_PATH = "/output/entry.txt"
 
 
+def validate_single_line(text: str) -> None:
+    """The entry must be exactly one line of plain text.
+
+    No embedded newlines or carriage returns, no leading/trailing
+    blank lines, and no trailing spaces after the final period --
+    the kit reads the file as one line and a stray newline would
+    make it look like a second, empty line.
+    """
+    if "\n" in text or "\r" in text:
+        raise ValueError("entry must be a single line (no newline)")
+    if text != text.strip():
+        raise ValueError("entry must not have leading/trailing spaces")
+    if text.endswith(" "):
+        raise ValueError("entry must not end with a space")
+    if "  " in text:
+        raise ValueError("entry must not contain double spaces")
+
+
+def validate_gps_voice(text: str) -> None:
+    """The excuse must sound like the GPS itself talking.
+
+    First person ("I"), defensive, blaming the map -- never a
+    narrator describing the GPS, never a dialogue tag like
+    'GPS:' or a quoted line. The turn (the GPS was promised
+    cake) has to be in the GPS's own words, not reported speech.
+    """
+    lowered = text.lower()
+    if not lowered.startswith("i "):
+        raise ValueError("entry should be in the GPS's first-person voice")
+    if "map" not in lowered:
+        raise ValueError("entry should blame the map, in the GPS's voice")
+    if text.startswith(("GPS:", "GPS says", '"')):
+        raise ValueError("entry must not carry a dialogue tag or quotes")
+    if "recalculating" in lowered:
+        raise ValueError("entry must not reuse the tired recalculating joke")
+
+
+def validate_fresh_detail(text: str) -> None:
+    """The excuse needs one fresh, specific detail, not a cliche.
+
+    The brief asks for a specific, surprising detail (here: a
+    wedding, and cake) instead of the generic "wrong turn" joke.
+    Require at least one concrete noun from the entry's own
+    premise, and forbid the stock phrases every GPS joke reuses.
+    """
+    lowered = text.lower()
+    concrete = ("wedding", "cake", "detour", "shortcut", "traffic")
+    if not any(word in lowered for word in concrete):
+        raise ValueError("entry needs one fresh, specific detail")
+    banned = ("wrong turn", "u-turn", "signal lost", "satellite")
+    if any(phrase in lowered for phrase in banned):
+        raise ValueError("entry must not reuse a stock GPS cliche")
+
+
 def validate(text: str) -> None:
     """Check the kit's gates for the entry text.
 
@@ -34,11 +88,10 @@ def validate(text: str) -> None:
         raise ValueError(
             f"entry must be 1-200 characters, got {len(text)}"
         )
-    if "\n" in text or "\r" in text:
-        raise ValueError("entry must be a single line (no newline)")
-    # The GPS is the speaker: first person, blaming the map.
-    if "map" not in text.lower():
-        raise ValueError("entry should blame the map, in the GPS's voice")
+    # Stage checks, one helper per concern: line shape, voice, detail.
+    validate_single_line(text)
+    validate_gps_voice(text)
+    validate_fresh_detail(text)
 
 
 def main() -> None:
